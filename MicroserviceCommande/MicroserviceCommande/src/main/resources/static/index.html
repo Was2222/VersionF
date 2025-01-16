@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Commandes</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .table {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 class="text-center mb-4">Gestion des Commandes</h1>
+
+    <!-- Formulaire pour ajouter ou modifier une commande -->
+    <div class="card">
+        <div class="card-header">
+            <h2 id="formTitle" class="card-title">Ajouter une nouvelle commande</h2>
+        </div>
+        <div class="card-body">
+            <form id="commandeForm">
+                <input type="hidden" id="commandeId" name="id">
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description:</label>
+                    <input type="text" class="form-control" id="description" name="description" required>
+                </div>
+                <div class="mb-3">
+                    <label for="quantite" class="form-label">Quantité:</label>
+                    <input type="number" class="form-control" id="quantite" name="quantite" required>
+                </div>
+                <div class="mb-3">
+                    <label for="date" class="form-label">Date:</label>
+                    <input type="date" class="form-control" id="date" name="date" required>
+                </div>
+                <div class="mb-3">
+                    <label for="montant" class="form-label">Montant:</label>
+                    <input type="number" step="0.01" class="form-control" id="montant" name="montant" required>
+                </div>
+                <button type="submit" id="submitButton" class="btn btn-primary">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tableau pour afficher les commandes -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Liste des commandes</h2>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Description</th>
+                    <th>Quantité</th>
+                    <th>Date</th>
+                    <th>Montant</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody id="commandesTableBody">
+                <!-- Les lignes des commandes seront ajoutées ici dynamiquement -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap 5 JS (avec Popper.js) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // URL de l'API des commandes
+    const API_URL = 'http://localhost:8080/commandes';
+
+    // Fonction pour récupérer les commandes depuis l'API
+    async function fetchCommandes() {
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) {
+                throw new Error('Erreur lors de la récupération des commandes');
+            }
+            const commandes = await response.json();
+            const tbody = document.querySelector('#commandesTableBody');
+            tbody.innerHTML = ''; // Vider le tableau avant d'ajouter de nouvelles données
+
+            commandes.forEach(commande => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                        <td>${commande.id}</td>
+                        <td>${commande.description}</td>
+                        <td>${commande.quantite}</td>
+                        <td>${new Date(commande.date).toLocaleDateString()}</td>
+                        <td>${commande.montant}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" onclick="editCommande(${commande.id})">Modifier</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteCommande(${commande.id})">Supprimer</button>
+                        </td>
+                    `;
+                tbody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Erreur:', error);
+        }
+    }
+
+    // Fonction pour ajouter ou mettre à jour une commande
+    async function saveCommande(event) {
+        event.preventDefault();
+        const formData = {
+            id: document.getElementById('commandeId').value || null,
+            description: document.getElementById('description').value,
+            quantite: parseInt(document.getElementById('quantite').value),
+            date: document.getElementById('date').value,
+            montant: parseFloat(document.getElementById('montant').value)
+        };
+
+        const method = formData.id ? 'PUT' : 'POST';
+        const url = formData.id ? `${API_URL}/${formData.id}` : API_URL;
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+            if (!response.ok) {
+                throw new Error('Erreur lors de la sauvegarde de la commande');
+            }
+            alert('Commande sauvegardée avec succès !');
+            fetchCommandes(); // Rafraîchir la liste des commandes
+            resetForm();
+        } catch (error) {
+            console.error('Erreur:', error);
+        }
+    }
+
+    // Fonction pour modifier une commande
+    async function editCommande(id) {
+        try {
+            const response = await fetch(`${API_URL}/${id}`);
+            if (!response.ok) {
+                throw new Error('Erreur lors de la récupération de la commande');
+            }
+            const commande = await response.json();
+            document.getElementById('commandeId').value = commande.id;
+            document.getElementById('description').value = commande.description;
+            document.getElementById('quantite').value = commande.quantite;
+            document.getElementById('date').value = commande.date;
+            document.getElementById('montant').value = commande.montant;
+            document.getElementById('formTitle').textContent = 'Modifier la commande';
+            document.getElementById('submitButton').textContent = 'Mettre à jour';
+        } catch (error) {
+            console.error('Erreur:', error);
+        }
+    }
+
+    // Fonction pour supprimer une commande
+    async function deleteCommande(id) {
+        if (confirm('Êtes-vous sûr de vouloir supprimer cette commande ?')) {
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la suppression de la commande');
+                }
+                alert('Commande supprimée avec succès !');
+                fetchCommandes(); // Rafraîchir la liste des commandes
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+    }
+
+    // Fonction pour réinitialiser le formulaire
+    function resetForm() {
+        document.getElementById('commandeForm').reset();
+        document.getElementById('commandeId').value = '';
+        document.getElementById('formTitle').textContent = 'Ajouter une nouvelle commande';
+        document.getElementById('submitButton').textContent = 'Enregistrer';
+    }
+
+    // Événements
+    document.getElementById('commandeForm').addEventListener('submit', saveCommande);
+    document.addEventListener('DOMContentLoaded', fetchCommandes);
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Produits</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .table {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 class="text-center mb-4">Gestion des Produits</h1>
+
+    <!-- Formulaire pour ajouter ou modifier un produit -->
+    <div class="card">
+        <div class="card-header">
+            <h2 id="formTitle" class="card-title">Ajouter un nouveau produit</h2>
+        </div>
+        <div class="card-body">
+            <form id="produitForm">
+                <input type="hidden" id="produitId" name="id">
+                <div class="mb-3">
+                    <label for="nom" class="form-label">Nom:</label>
+                    <input type="text" class="form-control" id="nom" name="nom" required>
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description:</label>
+                    <input type="text" class="form-control" id="description" name="description" required>
+                </div>
+                <div class="mb-3">
+                    <label for="quantite" class="form-label">Quantité:</label>
+                    <input type="number" class="form-control" id="quantite" name="quantite" required>
+                </div>
+                <div class="mb-3">
+                    <label for="prix" class="form-label">Prix:</label>
+                    <input type="number" step="0.01" class="form-control" id="prix" name="prix" required>
+                </div>
+                <div class="mb-3">
+                    <label for="dateAjout" class="form-label">Date d'ajout:</label>
+                    <input type="date" class="form-control" id="dateAjout" name="dateAjout" required>
+                </div>
+                <button type="submit" id="submitButton" class="btn btn-primary">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tableau pour afficher les produits -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Liste des produits</h2>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nom</th>
+                    <th>Description</th>
+                    <th>Quantité</th>
+                    <th>Prix</th>
+                    <th>Date d'ajout</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody id="produitsTableBody">
+                <!-- Les lignes des produits seront ajoutées ici dynamiquement -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap 5 JS (avec Popper.js) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // URL de l'API des produits
+    const API_URL = 'http://localhost:8081/produits';
+
+    // Fonction pour récupérer les produits depuis l'API
+    async function fetchProduits() {
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) {
+                throw new Error('Erreur lors de la récupération des produits');
+            }
+            const produits = await response.json();
+            const tbody = document.querySelector('#produitsTableBody');
+            tbody.innerHTML = ''; // Vider le tableau avant d'ajouter de nouvelles données
+
+            produits.forEach(produit => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                        <td>${produit.id}</td>
+                        <td>${produit.nom}</td>
+                        <td>${produit.description}</td>
+                        <td>${produit.quantite}</td>
+                        <td>${produit.prix}</td>
+                        <td>${new Date(produit.dateAjout).toLocaleDateString()}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" onclick="editProduit(${produit.id})">Modifier</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteProduit(${produit.id})">Supprimer</button>
+                        </td>
+                    `;
+                tbody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Erreur:', error);
+        }
+    }
+
+    // Fonction pour ajouter ou mettre à jour un produit
+    async function saveProduit(event) {
+        event.preventDefault();
+        const formData = {
+            id: document.getElementById('produitId').value || null,
+            nom: document.getElementById('nom').value,
+            description: document.getElementById('description').value,
+            quantite: parseInt(document.getElementById('quantite').value),
+            prix: parseFloat(document.getElementById('prix').value),
+            dateAjout: document.getElementById('dateAjout').value
+        };
+
+        const method = formData.id ? 'PUT' : 'POST';
+        const url = formData.id ? `${API_URL}/${formData.id}` : API_URL;
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+            if (!response.ok) {
+                throw new Error('Erreur lors de la sauvegarde du produit');
+            }
+            alert('Produit sauvegardé avec succès !');
+            fetchProduits(); // Rafraîchir la liste des produits
+            resetForm();
+        } catch (error) {
+            console.error('Erreur:', error);
+        }
+    }
+
+    // Fonction pour modifier un produit
+    async function editProduit(id) {
+        try {
+            const response = await fetch(`${API_URL}/${id}`);
+            if (!response.ok) {
+                throw new Error('Erreur lors de la récupération du produit');
+            }
+            const produit = await response.json();
+            document.getElementById('produitId').value = produit.id;
+            document.getElementById('nom').value = produit.nom;
+            document.getElementById('description').value = produit.description;
+            document.getElementById('quantite').value = produit.quantite;
+            document.getElementById('prix').value = produit.prix;
+            document.getElementById('dateAjout').value = produit.dateAjout;
+            document.getElementById('formTitle').textContent = 'Modifier le produit';
+            document.getElementById('submitButton').textContent = 'Mettre à jour';
+        } catch (error) {
+            console.error('Erreur:', error);
+        }
+    }
+
+    // Fonction pour supprimer un produit
+    async function deleteProduit(id) {
+        if (confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la suppression du produit');
+                }
+                alert('Produit supprimé avec succès !');
+                fetchProduits(); // Rafraîchir la liste des produits
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+    }
+
+    // Fonction pour réinitialiser le formulaire
+    function resetForm() {
+        document.getElementById('produitForm').reset();
+        document.getElementById('produitId').value = '';
+        document.getElementById('formTitle').textContent = 'Ajouter un nouveau produit';
+        document.getElementById('submitButton').textContent = 'Enregistrer';
+    }
+
+    // Événements
+    document.getElementById('produitForm').addEventListener('submit', saveProduit);
+    document.addEventListener('DOMContentLoaded', fetchProduits);
+</script>
+</body>
+</html>
